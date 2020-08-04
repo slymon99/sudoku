@@ -11,7 +11,12 @@ fn main() {
     let line = "600079020940103000000400000000002054205806100070000000000000000000600538400000063 #Easy".to_string();
     let s = sudoku_from_line(line);
     println!("{}", s);
-    println!("{:?}", square(s, 3, 4));
+    println!("{:?}", square(&s.board, 3, 4));
+    println!("{:?}", find_first_empty(&s.board))
+}
+
+fn solve_sudoku(input: Sudoku) {
+
 }
 
 fn sudoku_from_line(line: String) -> Sudoku {
@@ -22,34 +27,45 @@ fn sudoku_from_line(line: String) -> Sudoku {
         .collect()};
 }
 
-fn column(input: Sudoku, column: u32) -> HashSet<u32> {
-    return input.board
+fn column(board: &[u32], column: u32) -> HashSet<u32> {
+    return board
         .into_iter()
+        .map(|item| *item)
         .skip(column as usize)
         .step_by(9)
         .filter(|n| *n != 0)
         .collect();
 }
 
-fn row(input: Sudoku, row: u32) -> HashSet<u32> {
-    return input.board
+fn row(board: &[u32], row: u32) -> HashSet<u32> {
+    return board
         .into_iter()
+        .map(|item| *item)
         .skip((row * 9) as usize)
         .take(9)
         .filter(|n| *n != 0)
-        .collect();
+        .collect::<HashSet<_>>();
 }
 
-fn square(input: Sudoku, row: u32, col: u32) -> HashSet<u32> {
+fn square(board: &[u32], row: u32, col: u32) -> HashSet<u32> {
     let start = (row / 3 * 27 + col / 3 * 3) as usize;
-    return [&input.board[start..start+3],
-        &input.board[start+9..start+12],
-        &input.board[start+18..start+21]]
+    return [&board[start..start+3],
+        &board[start+9..start+12],
+        &board[start+18..start+21]]
         .concat()
         .to_vec()
         .into_iter()
         .filter(|n| *n != 0)
         .collect();
+}
+
+fn find_first_empty(board: &[u32]) -> Option<(u32, u32)> {
+    let first = board
+        .into_iter()
+        .enumerate()
+        .find(|(idx, item)| **item == 0)?;
+    let idx = first.0 as u32;
+    return Some((idx / 9, idx % 9));
 }
 
 struct Sudoku{board: Vec<u32>}
