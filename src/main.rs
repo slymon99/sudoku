@@ -6,7 +6,8 @@ use std::fmt::Formatter;
 extern crate lazy_static;
 
 lazy_static! {
-    static ref ALL_OPTIONS: HashSet<u32> = vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into_iter().collect();
+    static ref ALL_OPTIONS: HashSet<&'static u32> =
+        [1, 2, 3, 4, 5, 6, 7, 8, 9].iter().collect();
 }
 
 fn main() {
@@ -22,23 +23,23 @@ fn main() {
 }
 
 fn solve_sudoku(input: Sudoku) -> Option<Sudoku> {
-    return match find_first_empty(&input.board) {
+    match find_first_empty(&input.board) {
         None => Some(input),
         Some((row, col)) => {
-            let options = ALL_OPTIONS
+            let options = &ALL_OPTIONS
                 .difference(&col_taken(&input.board, col))
-                .map(|item| *item)
-                .collect::<HashSet<u32>>()
+                .copied()
+                .collect::<HashSet<&u32>>()
                 .difference(&row_taken(&input.board, row))
-                .map(|item| *item)
-                .collect::<HashSet<u32>>()
+                .copied()
+                .collect::<HashSet<&u32>>()
                 .difference(&square_taken(&input.board, row, col))
-                .map(|item| *item)
-                .collect::<Vec<u32>>();
+                .copied()
+                .collect::<Vec<&u32>>();
             println!("{:?}", options);
             None
         }
-    };
+    }
 }
 
 fn sudoku_from_line(line: String) -> Sudoku {
@@ -52,38 +53,37 @@ fn sudoku_from_line(line: String) -> Sudoku {
     }
 }
 
-fn col_taken(board: &[u32], column: u32) -> HashSet<u32> {
+fn col_taken(board: &[u32], column: u32) -> HashSet<&u32> {
     board
         .iter()
-        .map(|item| *item)
         .skip(column as usize)
         .step_by(9)
-        .filter(|n| *n != 0)
+        .filter(|n| **n != 0)
         .collect()
 }
 
-fn row_taken(board: &[u32], row: u32) -> HashSet<u32> {
+fn row_taken(board: &[u32], row: u32) -> HashSet<&u32> {
     board
         .iter()
-        .map(|item| *item)
         .skip((row * 9) as usize)
         .take(9)
-        .filter(|n| *n != 0)
+        .filter(|n| **n != 0)
         .collect()
 }
 
-fn square_taken(board: &[u32], row: u32, col: u32) -> HashSet<u32> {
+fn square_taken(board: &[u32], row: u32, col: u32) -> HashSet<&u32> {
     let start = (row / 3 * 27 + col / 3 * 3) as usize;
     [
         &board[start..start + 3],
         &board[start + 9..start + 12],
         &board[start + 18..start + 21],
     ]
-    .concat()
-    .to_vec()
-    .into_iter()
-    .filter(|n| *n != 0)
-    .collect()
+        .to_vec()
+        .iter()
+        .map(|slice| slice.iter())
+        .flatten()
+        .filter(|n| **n != 0)
+        .collect()
 }
 
 fn find_first_empty(board: &[u32]) -> Option<(u32, u32)> {
