@@ -1,6 +1,6 @@
 use core::fmt;
-use std::fmt::Formatter;
 use std::collections::HashSet;
+use std::fmt::Formatter;
 
 pub struct Sudoku {
     pub board: Vec<u32>,
@@ -39,7 +39,7 @@ pub fn solve_sudoku(input: &mut Sudoku) -> bool {
         None => true,
         Some((row, col)) => {
             // println!("{} \n {} {} {:?}", input, row, col, options_for(&input.board, row, col));
-            for option in  options_for(&input.board, row, col){
+            for option in options_for(&input.board, row, col) {
                 let idx = (row * 9 + col) as usize;
                 input.board[idx] = option;
                 let sol = solve_sudoku(input);
@@ -48,13 +48,14 @@ pub fn solve_sudoku(input: &mut Sudoku) -> bool {
                 }
                 input.board[idx] = 0;
             }
-            return false;
+            false
         }
     }
 }
 
 fn options_for(board: &[u32], row: u32, col: u32) -> Vec<u32> {
-    (1..=9).collect::<HashSet<u32>>()
+    (1..=9)
+        .collect::<HashSet<u32>>()
         .difference(&col_taken(board, col))
         .copied()
         .collect::<HashSet<u32>>()
@@ -65,8 +66,6 @@ fn options_for(board: &[u32], row: u32, col: u32) -> Vec<u32> {
         .copied()
         .collect::<Vec<_>>()
 }
-
-
 
 fn col_taken(board: &[u32], column: u32) -> HashSet<u32> {
     board
@@ -95,13 +94,13 @@ fn square_taken(board: &[u32], row: u32, col: u32) -> HashSet<u32> {
         &board[start + 9..start + 12],
         &board[start + 18..start + 21],
     ]
-        .to_vec()
-        .iter()
-        .map(|slice| slice.iter())
-        .flatten()
-        .filter(|n| **n != 0)
-        .copied()
-        .collect()
+    .to_vec()
+    .iter()
+    .map(|slice| slice.iter())
+    .flatten()
+    .filter(|n| **n != 0)
+    .copied()
+    .collect()
 }
 
 fn find_first_empty(board: &[u32]) -> Option<(u32, u32)> {
@@ -109,4 +108,3 @@ fn find_first_empty(board: &[u32]) -> Option<(u32, u32)> {
     let idx = first.0 as u32;
     Some((idx / 9, idx % 9))
 }
-
