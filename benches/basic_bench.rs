@@ -16,6 +16,13 @@ fn sudoku_from_line(line: &str) -> Sudoku {
     s
 }
 
+fn solve_all_from_string_par(s: &str) -> bool {
+    s.split('\n').collect::<Vec<_>>()
+        .into_par_iter()
+        .map(|line| solve_sudoku(&mut sudoku_from_line(line)))
+        .all(|x| x)
+}
+
 fn solve_all_from_string(s: &str) -> bool {
     s.split('\n')
         .map(|line| solve_sudoku(&mut sudoku_from_line(line)))
@@ -23,10 +30,10 @@ fn solve_all_from_string(s: &str) -> bool {
 }
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use std::collections::HashMap;
 use std::fs::File;
 use std::io;
 use std::io::Read;
+use rayon::prelude::*;
 
 fn read_file(path: &str) -> Result<String, io::Error> {
     let mut f = File::open(path)?;
@@ -37,13 +44,13 @@ fn read_file(path: &str) -> Result<String, io::Error> {
 fn bench_throughput(c: &mut Criterion) {
     let mut group = c.benchmark_group("sudoku");
 
-    let line = read_file("./sudokus/easy_bench.adk").expect("Couldn't load file");
+    let line = read_file("./sudokus/0_Easy_000.adk").expect("Couldn't load file");
     let length = line.split("\n").collect::<Vec<_>>().len();
 
     group.throughput(Throughput::Elements(length as u64));
     group.sample_size(10);
     group.bench_with_input(BenchmarkId::new("solve", length), &line, |b, i| {
-        b.iter(|| solve_all_from_string(i))
+        b.iter(|| solve_all_from_string_par(i))
     });
 
     group.finish();
