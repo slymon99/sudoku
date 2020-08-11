@@ -5,9 +5,9 @@ use std::fmt::Formatter;
 #[derive(Debug)]
 pub struct Sudoku {
     pub board: Vec<u32>,
-    pub row_memo: HashMap<u32, HashSet<u32>>,
-    pub col_memo: HashMap<u32, HashSet<u32>>,
-    pub square_memo: HashMap<(u32, u32), HashSet<u32>>,
+    pub row_memo: Vec<u32>,
+    pub col_memo: Vec<u32>,
+    pub square_memo: Vec<u32>,
 }
 
 impl fmt::Display for Sudoku {
@@ -40,111 +40,89 @@ impl fmt::Display for Sudoku {
 
 pub fn initialize_sudoku(input: &mut Sudoku) {
     for idx in 0..=8 {
+        input.col_memo.push(col_taken(&input.board, idx));
+        input.row_memo.push(row_taken(&input.board, idx));
         input
-            .col_memo
-            .insert(idx, flip(&col_taken(&input.board, idx)));
-        input
-            .row_memo
-            .insert(idx, flip(&row_taken(&input.board, idx)));
-        let (row, col) = (idx / 3, idx % 3);
-        input.square_memo.insert(
-            (row, col),
-            flip(&square_taken(&input.board, row * 3, col * 3)),
-        );
+            .square_memo
+            .push(square_taken(&input.board, idx / 3 * 3, idx % 3 * 3));
     }
-}
-
-fn flip(input: &HashSet<u32>) -> HashSet<u32> {
-    (1..=9)
-        .collect::<HashSet<u32>>()
-        .difference(input)
-        .copied()
-        .collect::<HashSet<_>>()
 }
 
 pub fn solve_sudoku(input: &mut Sudoku) -> bool {
     match find_first_empty(&input.board) {
         None => true,
         Some((row, col)) => {
-            let options = options_for(&input, row, col);
             // println!(
-            //     "{} \n{} {} {:?} {:?}",
+            //     "{} \n{} {} {:?}",
             //     input,
             //     row,
             //     col,
-            //     options,
-            //     input.row_memo
+            //     options_for(&input, row, col)
             // );
-            for option in &options {
-                let idx = (row * 9 + col) as usize;
-                input.board[idx] = *option;
-                remove_option(input, row, col, *option);
-                let sol = solve_sudoku(input);
-                if sol {
-                    return sol;
+            for option in 1..=9 {
+                if 1 << option - 1 & options_for(&input, row, col) == 0 {
+                    let idx = (row * 9 + col) as usize;
+                    input.board[idx] = option;
+                    remove_option(input, row, col, option);
+                    let sol = solve_sudoku(input);
+                    if sol {
+                        return sol;
+                    }
+                    input.board[idx] = 0;
+                    add_option(input, row, col, option);
                 }
-                input.board[idx] = 0;
-                add_option(input, row, col, *option);
             }
             false
         }
     }
 }
 
-fn options_for(board: &Sudoku, row: u32, col: u32) -> HashSet<u32> {
-    board
-        .row_memo
-        .get(&row)
-        .unwrap()
-        .intersection(&board.col_memo.get(&col).unwrap())
-        .copied()
-        .collect::<HashSet<u32>>()
-        .intersection(&board.square_memo.get(&(row / 3, col / 3)).unwrap())
-        .copied()
-        .collect()
+fn options_for(board: &Sudoku, row: u32, col: u32) -> u32 {
+    board.square_memo[row_col_to_square(row, col) as usize] | board.row_memo[row as usize] | board.col_memo[col as usize]
+}
+
+fn row_col_to_square(row: u32, col: u32) -> u32 {
+    row / 3 * 3 + col / 3
 }
 
 fn remove_option(board: &mut Sudoku, row: u32, col: u32, value: u32) {
-    board
-        .square_memo
-        .get_mut(&(row / 3, col / 3))
-        .unwrap()
-        .remove(&value);
-    board.row_memo.get_mut(&row).unwrap().remove(&value);
-    board.col_memo.get_mut(&col).unwrap().remove(&value);
+    let mask = 1 << value - 1;
+    board.row_memo[row as usize] |= mask;
+    board.col_memo[col as usize] |= mask;
+    board.square_memo[row_col_to_square(row, col) as usize] |= mask;
 }
 
 fn add_option(board: &mut Sudoku, row: u32, col: u32, value: u32) {
-    board
-        .square_memo
-        .get_mut(&(row / 3, col / 3))
-        .unwrap()
-        .insert(value);
-    board.row_memo.get_mut(&row).unwrap().insert(value);
-    board.col_memo.get_mut(&col).unwrap().insert(value);
+    let mask = !(1 << value - 1);
+    board.row_memo[row as usize] &= mask;
+    board.col_memo[col as usize] &= mask;
+    board.square_memo[row_col_to_square(row, col) as usize] &= mask;
 }
 
-fn col_taken(board: &[u32], column: u32) -> HashSet<u32> {
+pub fn col_taken(board: &[u32], column: u32) -> u32 {
+    let mut res = 0;
     board
         .iter()
         .skip(column as usize)
         .step_by(9)
-        .filter(|n| **n != 0)
-        .copied()
-        .collect()
+        .filter(|i| **i != 0)
+        .for_each(|i| res |= 1 << *i - 1);
+    res
 }
 
-fn row_taken(board: &[u32], row: u32) -> HashSet<u32> {
+pub fn row_taken(board: &[u32], row: u32) -> u32 {
+    let mut res = 0;
     board
         .iter()
         .skip((row * 9) as usize)
         .take(9)
         .filter(|n| **n != 0)
-        .copied()
-        .collect()
+        .for_each(|i| res |= 1 << *i - 1);
+    res
 }
 
-fn square_taken(board: &[u32], row: u32, col: u32) -> HashSet<u32> {
+pub fn square_taken(board: &[u32], row: u32, col: u32) -> u32 {
+    let mut res = 0;
     let start = (row / 3 * 27 + col / 3 * 3) as usize;
     [
         &board[start..start + 3],
@@ -156,8 +134,8 @@ fn square_taken(board: &[u32], row: u32, col: u32) -> HashSet<u32> {
     .map(|slice| slice.iter())
     .flatten()
     .filter(|n| **n != 0)
-    .copied()
-    .collect()
+    .for_each(|i| res |= 1 << i - 1);
+    res
 }
 
 fn find_first_empty(board: &[u32]) -> Option<(u32, u32)> {

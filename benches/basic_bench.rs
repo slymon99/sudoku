@@ -8,9 +8,9 @@ fn sudoku_from_line(line: &str) -> Sudoku {
             .map(|c| c.to_digit(10))
             .flatten()
             .collect(),
-        row_memo: HashMap::new(),
-        col_memo: HashMap::new(),
-        square_memo: HashMap::new(),
+        row_memo: Vec::new(),
+        col_memo: Vec::new(),
+        square_memo: Vec::new(),
     };
     initialize_sudoku(&mut s);
     s
