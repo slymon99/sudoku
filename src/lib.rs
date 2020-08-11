@@ -1,9 +1,13 @@
 use core::fmt;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::Formatter;
 
+#[derive(Debug)]
 pub struct Sudoku {
     pub board: Vec<u32>,
+    pub row_memo: HashMap<u32, HashSet<u32>>,
+    pub col_memo: HashMap<u32, HashSet<u32>>,
+    pub square_memo: HashMap<(u32, u32), HashSet<u32>>,
 }
 
 impl fmt::Display for Sudoku {
@@ -34,37 +38,90 @@ impl fmt::Display for Sudoku {
     }
 }
 
+pub fn initialize_sudoku(input: &mut Sudoku) {
+    for idx in 0..=8 {
+        input
+            .col_memo
+            .insert(idx, flip(&col_taken(&input.board, idx)));
+        input
+            .row_memo
+            .insert(idx, flip(&row_taken(&input.board, idx)));
+        let (row, col) = (idx / 3, idx % 3);
+        input.square_memo.insert(
+            (row, col),
+            flip(&square_taken(&input.board, row * 3, col * 3)),
+        );
+    }
+}
+
+fn flip(input: &HashSet<u32>) -> HashSet<u32> {
+    (1..=9)
+        .collect::<HashSet<u32>>()
+        .difference(input)
+        .copied()
+        .collect::<HashSet<_>>()
+}
+
 pub fn solve_sudoku(input: &mut Sudoku) -> bool {
     match find_first_empty(&input.board) {
         None => true,
         Some((row, col)) => {
-            // println!("{} \n {} {} {:?}", input, row, col, options_for(&input.board, row, col));
-            for option in options_for(&input.board, row, col) {
+            let options = options_for(&input, row, col);
+            // println!(
+            //     "{} \n{} {} {:?} {:?}",
+            //     input,
+            //     row,
+            //     col,
+            //     options,
+            //     input.row_memo
+            // );
+            for option in &options {
                 let idx = (row * 9 + col) as usize;
-                input.board[idx] = option;
+                input.board[idx] = *option;
+                remove_option(input, row, col, *option);
                 let sol = solve_sudoku(input);
                 if sol {
                     return sol;
                 }
                 input.board[idx] = 0;
+                add_option(input, row, col, *option);
             }
             false
         }
     }
 }
 
-fn options_for(board: &[u32], row: u32, col: u32) -> Vec<u32> {
-    (1..=9)
-        .collect::<HashSet<u32>>()
-        .difference(&col_taken(board, col))
+fn options_for(board: &Sudoku, row: u32, col: u32) -> HashSet<u32> {
+    board
+        .row_memo
+        .get(&row)
+        .unwrap()
+        .intersection(&board.col_memo.get(&col).unwrap())
         .copied()
         .collect::<HashSet<u32>>()
-        .difference(&row_taken(board, row))
+        .intersection(&board.square_memo.get(&(row / 3, col / 3)).unwrap())
         .copied()
-        .collect::<HashSet<u32>>()
-        .difference(&square_taken(board, row, col))
-        .copied()
-        .collect::<Vec<_>>()
+        .collect()
+}
+
+fn remove_option(board: &mut Sudoku, row: u32, col: u32, value: u32) {
+    board
+        .square_memo
+        .get_mut(&(row / 3, col / 3))
+        .unwrap()
+        .remove(&value);
+    board.row_memo.get_mut(&row).unwrap().remove(&value);
+    board.col_memo.get_mut(&col).unwrap().remove(&value);
+}
+
+fn add_option(board: &mut Sudoku, row: u32, col: u32, value: u32) {
+    board
+        .square_memo
+        .get_mut(&(row / 3, col / 3))
+        .unwrap()
+        .insert(value);
+    board.row_memo.get_mut(&row).unwrap().insert(value);
+    board.col_memo.get_mut(&col).unwrap().insert(value);
 }
 
 fn col_taken(board: &[u32], column: u32) -> HashSet<u32> {

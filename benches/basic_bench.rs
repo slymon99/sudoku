@@ -1,14 +1,19 @@
-use sudoku::{solve_sudoku, Sudoku};
+use sudoku::{initialize_sudoku, solve_sudoku, Sudoku};
 
 fn sudoku_from_line(line: &str) -> Sudoku {
-    Sudoku {
+    let mut s = Sudoku {
         board: line
             .chars()
             .take(81)
             .map(|c| c.to_digit(10))
             .flatten()
             .collect(),
-    }
+        row_memo: HashMap::new(),
+        col_memo: HashMap::new(),
+        square_memo: HashMap::new(),
+    };
+    initialize_sudoku(&mut s);
+    s
 }
 
 fn solve_all_from_string(s: &str) -> bool {
@@ -18,6 +23,7 @@ fn solve_all_from_string(s: &str) -> bool {
 }
 
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
+use std::collections::HashMap;
 use std::fs::File;
 use std::io;
 use std::io::Read;
